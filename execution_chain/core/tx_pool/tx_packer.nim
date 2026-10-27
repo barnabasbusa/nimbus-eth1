@@ -335,13 +335,13 @@ proc vmExecCommit(pst: var TxPacker, xp: TxPoolRef): Result[void, string] =
 # Public functions
 # ------------------------------------------------------------------------------
 
-proc packerVmExec*(xp: TxPoolRef): Result[TxPacker, string] =
+proc packerVmExec*(xp: TxPoolRef, emptyBody = false): Result[TxPacker, string] =
   ## Execute as much transactions as possible.
   var pst = xp.vmExecInit.valueOr:
     return err(error)
   let focil = xp.focil
 
-  if xp.isOrdered:
+  if xp.isOrdered and not emptyBody:
     for item in xp.byOrder:
       let rc = pst.vmExecGrabItem(item)
       if rc == StopCollecting:
@@ -353,6 +353,8 @@ proc packerVmExec*(xp: TxPoolRef): Result[TxPacker, string] =
         if rc == StopCollecting:
           break focilBlock
 
+      if emptyBody:
+        break focilBlock
       for item in xp.byPriceAndNonce:
         if item.id in focil.list:
           continue
@@ -361,7 +363,7 @@ proc packerVmExec*(xp: TxPoolRef): Result[TxPacker, string] =
           break
     # reset focil to nil
     xp.focil = nil
-  else:
+  elif not emptyBody:
     for item in xp.byPriceAndNonce:
       let rc = pst.vmExecGrabItem(item)
       if rc == StopCollecting:
